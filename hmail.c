@@ -2,7 +2,7 @@
     hmail
     Copyright © Alex Waugh 2005
 
-    $Id: $
+    $Id$
 
     Simple command line program that sends mail to an SMTP relay.
 
@@ -31,14 +31,72 @@
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 
 
 #define BUFFER_SIZE 4096
 
-void getresponse(int code)
+char *readline(int sock)
 {
-    /**/
+    static char buf[1024] = "";
+    static char buf2[1024];
+    static int len = 0;
+    int ret;
+    char *crlf;
+
+    do {
+        printf("buf = '%s'\n",buf);
+        crlf = strstr(buf, "\r\n");
+
+        if (crlf) {
+            int linelen = crlf - buf;
+            memcpy(buf2, buf, linelen);
+            buf2[linelen] = '\0';
+            memmove(buf, buf + linelen + 2, len - linelen - 2);
+            len -= linelen + 2;
+            buf[len] = '\0';
+            printf("returning '%s'\n",buf2);
+        printf("now buf = '%s'\n",buf);
+            return buf2;
+        }
+
+printf("reading...\n");
+        ret = read(sock, buf + len, sizeof(buf) - 1 - len);
+        if (ret == EOF) {
+            syslog(1, "socketread failed");
+            exit(EXIT_FAILURE);
+        }
+
+        len += ret;
+        buf[len] = '\0';
+    } while (ret > 0);
+
+    syslog(1, "socketread failed");
+    exit(EXIT_FAILURE);
+    return NULL;
+}
+
+void getresponse(int sock, int code)
+{
+    char *line;
+    int cont;
+    int num;
+
+    do {
+        char *line2;
+        line = readline(sock);
+        puts(line);
+        num = strtol(line, &line2, 10);
+        line = line2;
+        printf("num '%d' '%c' %d\n",num,*line,*line);
+    } while (*line == '-');
+
+    if ((num - code) < 0 || (num - code) >= 100) {
+        syslog(1, "Incorrect response recieved %d",num);
+        syslog(1, "%s", line);
+        exit(EXIT_FAILURE);
+    }
 }
 
 char *extractaddress(char *line)
@@ -94,8 +152,9 @@ int main(void)
     size_t bufpos;
     char *to = NULL;
     char *from = NULL;
-    int socket = -1;
+    int sock = -1;
     int written;
+    char tmp[4096];
 
     openlog("hmail", 0, LOG_MAIL);
 
@@ -107,7 +166,7 @@ int main(void)
             char *line = getline(buffer, buflen, &bufpos);
 
             if (line == NULL) {
-               syslog(1, "%s header not found in first %d bytes of email", to ? "TO" : "FROM",BUFFER_SIZE);
+               syslog(1, "%s header not found in first %d bytes of email", to ? "TO" : "FROM", BUFFER_SIZE);
                return EXIT_FAILURE;
             }
 
@@ -119,19 +178,19 @@ int main(void)
         }
 
         bufpos = 0;
-        if (socket != EOF) {
+        if (sock == -1) {
             char *hostname;
             char *domain;
             struct hostent *hp;
             struct sockaddr_in sockaddr;
-            char tmp[4096];
 
             hostname = getenv("Inet$Hostname");
             if (hostname) hostname = strdup(hostname);
             domain = getenv("Inet$LocalDomain");
+            if (domain) domain = strdup(domain);
 
-            socket = socket(AF_INET, SOCK_STREAM, 0);
-            if (socket == EOF) {
+            sock = socket(AF_INET, SOCK_STREAM, 0);
+            if (sock == EOF) {
                 syslog(1, "Unable to open socket (%s)", strerror(errno));
                 return EXIT_FAILURE;
             }
@@ -145,29 +204,30 @@ int main(void)
             memset(&(sockaddr), 0, sizeof(sockaddr));
             memcpy(&(sockaddr.sin_addr), hp->h_addr, hp->h_length);
             sockaddr.sin_family = AF_INET;
-            sockaddr.sin_port = 25;/**/
+            sockaddr.sin_port = htons(25);/**/
 
-            if (connect(socket, (struct sockaddr *)&sockaddr, sizeof(struct sockaddr_in) == EOF) {
+            if (connect(sock, (struct sockaddr *)&sockaddr, sizeof(struct sockaddr_in)) == EOF) {
                 syslog(1, "Unable to connect socket (%s)", strerror(errno));/*h_errno?*/
                 return EXIT_FAILURE;
             }
 
+            getresponse(sock, 200);
             sprintf(tmp, "EHLO %s.%s\r\n",hostname ? hostname : "", domain ? domain : "");
-            write(socket, tmp, strlen(tmp));
-            getresponse(200);
+            write(sock, tmp, strlen(tmp));
+            getresponse(sock, 200);
             sprintf(tmp, "MAIL FROM:<%s>\r\n",from);
-            write(socket, tmp, strlen(tmp));
-            getresponse(200);
+            write(sock, tmp, strlen(tmp));
+            getresponse(sock, 200);
             sprintf(tmp, "RCPT TO:<%s>\r\n",to);
-            write(socket, tmp, strlen(tmp));
-            getresponse(200);
+            write(sock, tmp, strlen(tmp));
+            getresponse(sock, 200);
             sprintf(tmp, "DATA\r\n");
-            write(socket, tmp, strlen(tmp));
-            getresponse(300);
+            write(sock, tmp, strlen(tmp));
+            getresponse(sock, 300);
         }
 
         do {
-            written = write(socket, buffer + bufpos, buflen - bufpos);
+            written = write(sock, buffer + bufpos, buflen - bufpos);
             if (written == EOF) {
                /*close sock */
                syslog(1, "Writing to socket failed (%s)",strerror(errno));
@@ -179,12 +239,12 @@ int main(void)
     } while (buflen > 0);
 
     sprintf(tmp, "\r\n.\r\n");
-    write(socket, tmp, strlen(tmp));
-    getresponse(200);
+    write(sock, tmp, strlen(tmp));
+    getresponse(sock, 200);
     sprintf(tmp, "QUIT\r\n");
-    write(socket, tmp, strlen(tmp));
+    write(sock, tmp, strlen(tmp));
 
-    /*close sock*/
+    close(sock);
 
     return EXIT_SUCCESS;
 }
