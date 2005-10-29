@@ -1,7 +1,7 @@
 #
 # Makefile for hmail
 #
-# $Id: $
+# $Id$
 #
 
 all:

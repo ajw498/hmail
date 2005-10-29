@@ -1,0 +1,7 @@
+|
+| $Id$
+|
+
+IconSprites <Obey$Dir>.!Sprites
+
+Set alias$hmail Run <Obey$Dir>.hmail
