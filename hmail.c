@@ -147,7 +147,7 @@ static char *getline(char *buffer, size_t buflen, size_t *bufpos)
     return NULL;
 }
 
-static writedata(char *fmt, ...)
+static void writedata(char *fmt, ...)
 {
    char buffer[BUFFER_SIZE];
    va_list ap;
@@ -161,15 +161,64 @@ static writedata(char *fmt, ...)
    }
 }
 
-int main(void)
+static char *getsettings(int *port)
+{
+    static char line[1024];
+    char *p;
+    FILE *file = fopen("Choices:hmail", "r");
+    if (file == NULL) error("Cannot open settings file Choices:hmail");
+
+    if (fgets(line, sizeof(line), file) == NULL) error("Cannot read line from choices file");
+    p = strchr(line, ':');
+    if (p) {
+        *p++ = '\0';
+        *port = atoi(p);
+    } else {
+        p = strchr(line, '\n');
+        if (p) *p++ = '\0';
+        *port = 25;
+    }
+
+    fclose(file);
+
+    return line;
+}
+
+static void setsettings(char *server)
+{
+    char *filename = "<Choices$Write>.hmail";
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        fprintf(stderr, "Cannot open settings file %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
+    if (fprintf(file, "%s\n", server) == EOF) {
+        fprintf(stderr, "Cannot write to setting file %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
+    fclose(file);
+}
+
+int main(int argc, char **argv)
 {
     char buffer[BUFFER_SIZE];
     size_t buflen;
     size_t bufpos;
     char *to = NULL;
     char *from = NULL;
+    char *smtpserver;
+    int smtpport;
+
+    if (argc == 3 && strcmp(argv[1], "--server") == 0) {
+        setsettings(argv[2]);
+        return EXIT_SUCCESS;
+    }
 
     openlog("hmail", 0, LOG_MAIL);
+
+    smtpserver = getsettings(&smtpport);
 
     do {
         buflen = fread(buffer, 1, BUFFER_SIZE, stdin);
@@ -195,8 +244,6 @@ int main(void)
             char *domain;
             struct hostent *hp;
             struct sockaddr_in sockaddr;
-            char *smtpserver = "smtp.cp15.org";
-            int smtpport = 25;
 
             hostname = getenv("Inet$Hostname");
             if (hostname) hostname = strdup(hostname);
