@@ -138,6 +138,10 @@ static char *getline(char *buffer, size_t buflen, size_t *bufpos)
     char *line = buffer + *bufpos;
 
     while (*bufpos + 1 < buflen) {
+        if (buffer[*bufpos] == '\n') {
+            (*bufpos)++;
+            return line;
+        }
         if (buffer[*bufpos] == '\r' && buffer[*bufpos + 1] == '\n') {
             (*bufpos) += 2;
             return line;
