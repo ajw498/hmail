@@ -4,4 +4,4 @@
 
 IconSprites <Obey$Dir>.!Sprites
 
-Set alias$hmail Run <Obey$Dir>.hmail
+Set alias$hmail Run <Obey$Dir>.hmail %%*0
