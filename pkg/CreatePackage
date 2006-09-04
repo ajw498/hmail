@@ -1,0 +1,27 @@
+#!/usr/bin/perl -w
+#
+#  $Id: CreatePackage 34 2006-04-29 22:33:20Z ajw $
+#
+
+open(CHANGELOG, "<../!hmail/ChangeLog");
+$line = <CHANGELOG>;
+$line =~ /^v([\d\.]*) .*/;
+$version = $1;
+close CHANGELOG;
+
+open(OUT,">RiscPkg/Control");
+
+print OUT qq{Package: hmail
+Priority: Optional
+Section: Misc
+Maintainer: Alex Waugh <alex\@alexwaugh.com>
+Standards-Version: 0.0.0
+Version: $version
+Licence: Free
+Description: A simple command line program to send email to an SMTP smarthost.
+};
+
+#Depends: SharedUnixLibrary (>=1.07)
+
+close OUT;
+

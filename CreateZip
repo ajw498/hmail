@@ -1,7 +1,0 @@
-|
-|  $Id$
-|
-Dir <Obey$Dir>
-remove hmail/zip
-zip -r -9 -I hmail/zip !hmail COPYING -x *CVS* *svn* *.o.*
-
