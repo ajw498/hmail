@@ -1,1 +1,1 @@
-Run <hmail$Dir>.hmail %%*0
+Run <Packages$@Apps.Misc.!hmail>.hmail %%*0
