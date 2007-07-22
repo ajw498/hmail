@@ -19,7 +19,9 @@ Standards-Version: 0.1.0
 Version: $version
 Licence: Free
 Depends: UnixLib (>=4.0-3)
-Description: A simple command line program to send email to an SMTP smarthost.
+Description: hmail is a simple command line program to send email to an SMTP
+ smarthost. It is intended mainly for use with other programs, such as
+ PHP, that want something with an interface like sendmail on Unix.
 };
 
 
