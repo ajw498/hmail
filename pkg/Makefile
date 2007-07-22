@@ -3,8 +3,8 @@
 #
 
 all:
-	mkdir -p Apps/Misc
-	cp -r ../!hmail Apps/Misc
+	mkdir -p Apps/Mail
+	cp -r ../!hmail Apps/Mail
 	perl CreatePackage
 	zip -r -9 -I ^.hmail-pkg/zip Apps RiscPkg Sprites SysVars -x *svn*
 

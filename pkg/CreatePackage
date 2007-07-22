@@ -13,9 +13,9 @@ open(OUT,">RiscPkg/Control");
 
 print OUT qq{Package: hmail
 Priority: Optional
-Section: Misc
+Section: Mail
 Maintainer: Alex Waugh <alex\@alexwaugh.com>
-Standards-Version: 0.0.0
+Standards-Version: 0.1.0
 Version: $version
 Licence: Free
 Depends: UnixLib (>=4.0-3)
